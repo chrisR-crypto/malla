@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Malla Interactiva - Física UMG</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; }
+    .node {
+      fill: #ccc;
+      stroke: #333;
+      stroke-width: 1.5px;
+      cursor: pointer;
+      rx: 10;
+      ry: 10;
+    }
+    .node.done {
+      fill: #6aa84f;
+    }
+    .node text {
+      fill: white;
+      font-size: 12px;
+      pointer-events: none;
+    }
+    .link {
+      stroke: #aaa;
+      stroke-width: 2px;
+    }
+    svg {
+      width: 100vw;
+      height: 100vh;
+    }
+    .label {
+      fill: black;
+      font-size: 11px;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+  </style>
+</head>
+<body>
+  <svg id="malla"></svg>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const nodes = [
+      { id: "421", name: "Álgebra Superior", ciclo: 1 },
+      { id: "422", name: "Geometría Plana", ciclo: 1 },
+      { id: "423", name: "Desarrollo Humano", ciclo: 1 },
+      { id: "428", name: "Química I", ciclo: 1 },
+      { id: "437", name: "Física I", ciclo: 1 },
+      { id: "429", name: "Cálculo I", ciclo: 2, prereqs: ["421"] },
+      { id: "444", name: "Física II", ciclo: 2, prereqs: ["437"] },
+      { id: "435", name: "Álgebra Lineal I", ciclo: 2, prereqs: ["421"] },
+      { id: "401", name: "Programación", ciclo: 2 },
+      { id: "427", name: "Filosofía Ciencia", ciclo: 2 },
+      { id: "431", name: "Matemática Discreta", ciclo: 2 },
+      { id: "433", name: "Cálculo II", ciclo: 3, prereqs: ["429"] },
+      { id: "448", name: "Física III", ciclo: 3, prereqs: ["444"] },
+      { id: "440", name: "Álgebra Lineal II", ciclo: 3, prereqs: ["435"] },
+      { id: "447", name: "Estadística", ciclo: 3, prereqs: ["429"] },
+      { id: "424", name: "Razonamiento Físico", ciclo: 3, prereqs: ["427"] },
+      { id: "442", name: "Ecuaciones Dif. Ord.", ciclo: 4, prereqs: ["433"] },
+      { id: "430", name: "Cálculo Vectorial", ciclo: 4, prereqs: ["433", "435"] },
+      { id: "452", name: "Física Experimental I", ciclo: 4, prereqs: ["448"] },
+      { id: "402", name: "Óptica y Acústica", ciclo: 4, prereqs: ["433", "448"] },
+      { id: "439", name: "Física Moderna", ciclo: 4, prereqs: ["433", "448"] },
+      { id: "446", name: "Ecuaciones Dif. Parc.", ciclo: 5, prereqs: ["442"] },
+      { id: "403", name: "Teoría Electromagnética I", ciclo: 5, prereqs: ["430"] },
+      { id: "461", name: "Termodinámica", ciclo: 5, prereqs: ["442"] },
+      { id: "457", name: "Física Experimental II", ciclo: 5, prereqs: ["402", "452"] },
+      { id: "441", name: "Mecánica Clásica I", ciclo: 5, prereqs: ["442"] },
+      { id: "453", name: "Mecánica Clásica II", ciclo: 6, prereqs: ["441"] },
+      { id: "438", name: "Métodos Matemáticos I", ciclo: 6, prereqs: ["446"] },
+      { id: "404", name: "Relatividad Especial", ciclo: 6, prereqs: ["439"] },
+      { id: "451", name: "Teoría Electromagnética II", ciclo: 6, prereqs: ["403"] },
+      { id: "445", name: "Variable Compleja", ciclo: 6, prereqs: ["446"] },
+      { id: "459", name: "Mecánica Clásica III", ciclo: 7, prereqs: ["453"] },
+      { id: "449", name: "Métodos Matemáticos II", ciclo: 7, prereqs: ["438", "445"] },
+      { id: "462", name: "Análisis Numérico", ciclo: 7, prereqs: ["401", "442"] },
+      { id: "458", name: "Teoría Electromagnética III", ciclo: 7, prereqs: ["451"] },
+      { id: "405", name: "Mecánica Cuántica I", ciclo: 7, prereqs: ["438"] },
+      { id: "406", name: "Teoría de Grupos", ciclo: 8, prereqs: ["431"] },
+      { id: "460", name: "Mecánica Cuántica II", ciclo: 8, prereqs: ["405"] },
+      { id: "407", name: "Relatividad General", ciclo: 8, prereqs: ["449"] },
+      { id: "468", name: "Mecánica Estadística", ciclo: 8, prereqs: ["449"] },
+      { id: "463", name: "Física de Partículas", ciclo: 8, prereqs: ["439", "449"] },
+      { id: "408", name: "Cosmología", ciclo: 9, prereqs: ["407"] },
+      { id: "465", name: "Radiación Ionizante", ciclo: 9, prereqs: ["463"] },
+      { id: "409", name: "Seminario I", ciclo: 9, prereqs: ["401", "463"] },
+      { id: "410", name: "Seminario II", ciclo: 9, prereqs: ["401", "468"] },
+      { id: "464", name: "Estado Sólido", ciclo: 9, prereqs: ["468"] },
+      { id: "411", name: "Seminario III", ciclo: 10, prereqs: ["409", "410"] },
+      { id: "412", name: "Seminario IV", ciclo: 10, prereqs: ["409", "410"] },
+      { id: "413", name: "Seminario V", ciclo: 10, prereqs: ["407", "408"] },
+      { id: "414", name: "Seminario VI", ciclo: 10, prereqs: ["464", "465"] },
+      { id: "415", name: "Investigación", ciclo: 10, prereqs: ["409", "410", "427"] }
+    ];
+
+    const links = [];
+    nodes.forEach(n => {
+      if (n.prereqs) {
+        n.prereqs.forEach(p => {
+          links.push({ source: p, target: n.id });
+        });
+      }
+    });
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const svg = d3.select("#malla");
+
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+      .force("charge", d3.forceManyBody().strength(-1000))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("x", d3.forceX().strength(1).x(d => d.ciclo * 150))
+      .force("y", d3.forceY().strength(0.05).y(height / 2));
+
+    const link = svg.selectAll(".link")
+      .data(links)
+      .enter().append("line")
+      .attr("class", "link");
+
+    const node = svg.selectAll("g")
+      .data(nodes)
+      .enter().append("g")
+      .attr("class", "course")
+      .on("click", function (event, d) {
+        d.done = !d.done;
+        d3.select(this).select("rect")
+          .classed("done", d.done);
+        updateUnlocking();
+      });
+
+    node.append("rect")
+      .attr("class", "node")
+      .attr("width", 100)
+      .attr("height", 40)
+      .attr("x", -50)
+      .attr("y", -20);
+
+    node.append("text")
+      .attr("dy", -5)
+      .attr("text-anchor", "middle")
+      .text(d => d.id);
+
+    node.append("text")
+      .attr("class", "label")
+      .attr("dy", 13)
+      .text(d => d.name);
+
+    simulation.on("tick", () => {
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+      link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+    });
+
+    function updateUnlocking() {
+      node.each(function (d) {
+        if (d.prereqs) {
+          const unlocked = d.prereqs.every(pr => {
+            const found = nodes.find(n => n.id === pr);
+            return found && found.done;
+          });
+          d3.select(this).select("rect")
+            .style("stroke", unlocked ? "#0c0" : "#333")
+            .style("stroke-width", unlocked ? 3 : 1.5);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
